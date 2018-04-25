@@ -1,39 +1,311 @@
-
 ////////////MODELER//////////////
-var bpmnModeler;
 
-(function createModeler(BpmnModeler, $) {
-     bpmnModeler = new BpmnModeler({
-        container: '#canvas'
-    });
-})(window.BpmnJS, window.jQuery);
+var cancelDragDrop = false;
 
-// import function
-function importXML(xml) {
+//allow drop on dropzone when drag element is dragged in
+function allowDrop(ev) {
+    ev.preventDefault();
+}
 
-    // import diagram
-    bpmnModeler.importXML(xml, function (err) {
+//called when drag is initiated
+function drag(ev) {
+    if (!cancelDragDrop) {
+        ev.dataTransfer.setData("text", ev.target.id);
+    }    
+}
 
-        if (err) {
-            return console.error('could not import BPMN 2.0 diagram', err);
+//called when drag element is dropped on workspace
+function onWorkspaceDrop(ev) {
+    ev.preventDefault();    
+
+    var dragElementId = ev.dataTransfer.getData("text");
+    var dragElement = document.getElementById(dragElementId);    
+    var dropzone = getDropzone(ev.target);  
+
+    dropDragElement(dragElement, dropzone);
+    removeHoles();
+   
+}
+
+//called when drag element is dropped back on library
+function onLibraryDrop(ev) {
+    ev.preventDefault();
+    
+    var dragElementId = ev.dataTransfer.getData("text");
+    var dragElement = document.getElementById(dragElementId);    
+    var library = document.getElementById("library");
+   
+    library.appendChild(dragElement);
+    clean(library);
+    removeHoles();
+}
+
+//cleans useless and whitespace nodes in a nodelist
+function clean(node) {
+    for (var n = 0; n < node.childElementCount; n++) {
+        var child = node.childNodes[n];
+        if 
+    (
+          child.nodeType === 8
+          ||
+          (child.nodeType === 3 && !/\S/.test(child.nodeValue))
+        ) {
+            node.removeChild(child);
+            n--;
         }
-
-        var canvas = bpmnModeler.get('canvas');
-
-        // zoom to fit full viewport
-        canvas.zoom('fit-viewport');
-    });
+        else if (child.nodeType === 1) {
+            clean(child);
+        }
+    }
 }
 
-// get the Model    
-var dir = 'http://localhost:8012/camunda-web-tool/bpmn_diagrams';
-function getModel(fileName) {
-    if (typeof (fileName) == 'undefined') fileName = '/preprocessing.bpmn';
-    $.get(dir + fileName, importXML, 'text');
+//remove all holes in the line
+function removeHoles() {
+    var dropCount = document.getElementById("workspace").childElementCount;
+
+    for (var i = 1; i <= dropCount; i++) {        
+        var currentDrop = getElementFromId("drop", i); 
+        if (isDropzoneFree(currentDrop)) {            
+            var nextDrag = getNextDrag(i + 1, dropCount);            
+            if (nextDrag != false) {
+                currentDrop.appendChild(nextDrag);
+            }            
+        }
+    }
 }
 
+//get the next drag element in line starting from index i
+function getNextDrag(i, dropCount) {  
+    for (i; i <= dropCount; i++) {        
+        var currentDrop = getElementFromId("drop", i);        
+        if (!isDropzoneFree(currentDrop)) {           
+            var currentDrag = currentDrop.childNodes[0];            
+            currentDrop.removeChild(currentDrag);            
+            return currentDrag;
+        }        
+    }  
+    return false;
+}
 
-getModel();
+//get drag or drop element from id number
+function getElementFromId(elementType, idNumber) {
+    return document.getElementById(elementType + idNumber);
+}
+
+//get the dropzone element when drag element was dropped on occupied dropzone
+function getDropzone(dropzone) {
+    //check that dragElement was dropped on legit dropzone and not another dragElement
+    while (dropzone.id.substring(0, 4) != "drop") {
+        dropzone = dropzone.parentNode;
+    }
+    return dropzone;
+}
+
+//returns true if dropzone is free
+function isDropzoneFree(dropzone) {
+    if (dropzone.childElementCount > 0) {
+        return false;
+    }
+    else {
+        return true;
+    }
+}
+
+//gets id number of drag or drop element name
+function getElementIdNumber(e) {   
+    return parseInt(e.substring(4, 5));
+}
+
+//handles the drop of a drag element
+function dropDragElement(draggedElement, activeDropzone) {   
+    var firstDrag = false;   
+
+    if (isDropzoneFree(activeDropzone)) {
+        activeDropzone.appendChild(draggedElement);       
+    }
+    else {
+        var originDropzone = draggedElement.parentNode;        
+        //check if parent is valid dropzone
+        if (originDropzone.id.substring(0, 4) != "drop") {
+            firstDrag = true;
+        }
+        else {
+            var originDropzoneId = getElementIdNumber(draggedElement.parentNode.id);
+        }
+        
+        var activeDropzoneId = getElementIdNumber(activeDropzone.id);
+        var blockingElement = document.getElementById(activeDropzone.childNodes[0].id)
+        
+        var idDifference = Math.abs(originDropzoneId - activeDropzoneId);        
+       
+
+        //move all dragElements down        
+        if (idDifference > 1 || firstDrag) {            
+            var parentElement = draggedElement.parentNode;
+            parentElement.removeChild(draggedElement);
+            try {
+                moveDragDown(activeDropzone.childNodes[0]);
+            }
+            catch (error) {
+                console.error("Oh no. Something went wrong." + error);
+                return false;
+            }
+            activeDropzone.appendChild(draggedElement);
+        }
+        //swap both dragElements
+        else if (idDifference <= 1) {            
+            activeDropzone.removeChild(blockingElement);
+            activeDropzone.appendChild(draggedElement);
+            originDropzone.appendChild(blockingElement);
+        }
+    }
+}
+
+//moves drag elements down when inserting another inbetween
+function moveDragDown(dragElement) {
+    var currentDropzone = dragElement.parentNode;
+    var nextDropzoneId = parseInt(currentDropzone.id.substring(4, 5)) + 1;
+    var nextDropzone = document.getElementById("drop" + nextDropzoneId);
+    while (!isDropzoneFree(nextDropzone)) {
+        moveDragDown(document.getElementById(nextDropzone.childNodes[0].id));        
+    }
+    nextDropzone.appendChild(dragElement);
+    return true;
+}
+
+// clears specified process and returns to start 
+function clearProcess() {
+    var att = document.getElementById("attributeSetter");
+    var attBtn = document.getElementById("attributeButtonBar");
+    var cdb = document.getElementById("codeBox");
+    var cdbBtn = document.getElementById("codeBoxButtonBar");
+    cdb.style.visibility = "hidden";
+    cdbBtn.style.visibility = "hidden";
+    att.style.visibility = "hidden";
+    attBtn.style.visibility = "hidden";
+
+    cancelDragDrop = false;
+
+    var dropCount = document.getElementById("workspace").childElementCount;
+    var library = document.getElementById("library");
+
+    // takes all tasks from workspace back to library
+    for (var i = 1; i < dropCount; i++) {
+        var currentDrop = document.getElementById("drop" + i);
+        if (currentDrop.hasChildNodes()) {
+            var currentDrag = currentDrop.firstChild;
+            library.appendChild(currentDrag);
+        }        
+    }
+}
+
+// checks that given process is correct
+function processIsCorrect() {
+    var dropCount = document.getElementById("workspace").childElementCount;
+    for (var i = 1; i < dropCount; i++) {
+        var currentDrop = document.getElementById("drop" + i);
+        if (currentDrop.hasChildNodes()) {
+            return true;
+        }
+    }
+    return false;
+}    
+
+// accepts process and goes onto next step: specification of attributes
+function acceptProcess() {
+    if (processIsCorrect()) {        
+        var att = document.getElementById("attributeSetter");        
+        var attBtn = document.getElementById("attributeButtonBar");
+        att.style.visibility = "visible";
+        attBtn.style.visibility = "visible";
+        cancelDragDrop = true;
+        setAttributes();
+    }    
+}
+
+// gets the code and displays it in the codeBox
+function generateCode() {
+    var cdb = document.getElementById("codeBox");
+    var cdbBtn = document.getElementById("codeBoxButtonBar");
+    cdb.style.visibility = "visible";
+    cdbBtn.style.visibility = "visible";       
+
+    try {
+        processTasks = getProcess();
+        createRScript(processTasks);
+        displayRScript();
+        displayButtons();
+    }
+    catch (err) {
+        console.error("Could not parse process" + err);
+    }
+}
+
+// displays attributes depending on which tasked where specified in the process
+function setAttributes() {
+    var attHold1 = document.getElementById("attHold1");
+    var attHold2 = document.getElementById("attHold2");
+    var attHold3 = document.getElementById("attHold3");
+    var attHold4 = document.getElementById("attHold4");
+    var attHold = document.getElementById("attributeSetter");
+
+    attHold.innerHTML = "";
+
+    var filterAtt = `
+                        <div id="filterAtts" class="attribute">
+                            <p class="attributeTitle">Filtering Threshold</p>
+                            <input type="range" id="filtering_threshold" class="slider" min="0" max="100" step="1" />
+                            <input type="text" readonly id="ftValue" class="sliderTextField" maxlength="3">
+                        </div>
+                    `;
+    var featureAtt = `
+                        <div id="featureAtts" class="attribute">
+                            <p class="attributeTitle">Feature Selection Threshold</p>
+                            <input type="range" id="fs_threshold" class="slider" min="0" max="100" step="1" />
+                            <input type="text" readonly id="fstValue" class="sliderTextField" maxlength="3">
+                        </div>
+                    `;
+    var normalizeAtt = `
+                        <div id="normalizeAtts" class="attribute">
+                            <p class="attributeTitle">Normalization</p>
+                            <select id="normalization" class="select">
+                                <option value="vsd">VSD</option>
+                                <option value="rlog">RLog</option>
+                            </select>
+                        </div>
+                    `;
+    var preprocessAtt = `
+                        <div id="preprocessAtts" class ="attribute">
+                            <p class ="attributeTitle">Preprocessing</p>
+                            <select id="preprocessing" class ="select">
+                                <option value="DESeq2">DESeq2</option>
+                                <option value="edgeR">edgeR</option>
+                            </select>
+                        </div>
+                    `;
+
+    var process = getProcess();
+    
+    for (var i = 0; i < process.length; i++) {
+        var task = process[i];
+        switch(task) {
+            case "Filter":
+                attHold.innerHTML += filterAtt;
+                break;
+            case "Normalize":
+                attHold.innerHTML += normalizeAtt;
+                break;
+            case "Log Transform":
+                attHold.innerHTML += preprocessAtt;
+                break;
+            case "Discretize":
+                attHold.innerHTML += featureAtt;
+                break;
+            default:
+                console.error("Weird.");
+        } 
+    }
+}
 
 ////////////INPUT SETTINGS//////////////
 
@@ -55,51 +327,215 @@ function setDefaultValues() {
     fstText.value = fstRange.value = '0';
 }
 
-// check if the text value of an input range field is inbetween min and max
-function isValueInRange(text, range, min, max) {
-    if (text.value < min) {
-        text.value = min;
-        range.value = min;
+function figurethisout() {
+    // Update the value for the Filtering Threshold Range
+    var ftRange = document.getElementById('filtering_threshold');
+    var ftText = document.getElementById('ftValue');
+    var discretizationCheckbox = document.getElementById('enable_discretization');
+
+    ftRange.onchange = function () {
+        ftText.value = ftRange.value + " %";
     }
-    else if (text.value > max) {
-        text.value = max;
-        range.value = max;
+
+    // Update the value for the Feature Selection Threshold Range
+    var fstRange = document.getElementById('fs_threshold');
+    var fstText = document.getElementById('fstValue');
+
+    fstRange.onchange = function () {
+        fstText.value = fstRange.value + " %";
     }
-    else {
-        range.value = text.value;
+}
+
+
+////////////PARSER//////////////
+
+function parseProcess(xml) {
+    var parser = new DOMParser();
+    var xmlDoc = parser.parseFromString(xml, "text/xml");
+    var array = [];
+
+    var process = xmlDoc.getElementsByTagName("bpmn:sequenceFlow");
+
+    if (process.length == 0) {
+        alert("Please model a process first.");
+        return false;
+    }
+
+    var currentSource = "StartEvent";
+    var numOfTasks = process.length - 1;
+    var i = 0;
+
+    while (array.length <= numOfTasks) {
+
+        // find sequence with currentSource as source    
+        if (process[i].getAttribute("sourceRef") == currentSource) {
+            currentTarget = process[i].getAttribute("targetRef");
+
+            // Exception handling with EndEvent
+            if (currentTarget == "EndEvent") {
+                // no tasks
+                if (currentSource == "StartEvent") {
+                    alert("You must include at least one task or subprocess.");
+                    return false;
+                }
+                    // parsing finished
+                else {                    
+                    alert("Parsing was successful. See console (F12)");
+                    return array;
+                }
+            }
+                // all went well, iterate on
+            else {
+                array.push(currentTarget);
+                currentSource = currentTarget;
+                var i = 0;
+            }
+        }
+        else {
+            if (i == numOfTasks) {
+                alert("Something went wrong");
+                return false;
+            }
+            else {
+                i++;
+            }
+        }
+    }
+
+    alert("Something went wrong. Please make sure your process starts with a StartEvent, ends with an EndEvent and includes at least one task or subprocess inbetween.");
+    return false;
+}
+
+function getProcess() {
+    var array = [];
+    var dropCount = document.getElementById("workspace").childElementCount;
+
+    for (var i = 1; i < dropCount; i++) {
+        var currentDrop = document.getElementById("drop" + i);
+        if (currentDrop.hasChildNodes()) {
+            var currentDrag = currentDrop.firstChild.textContent;
+            array.push(currentDrag);
+        }        
+    }
+
+    if (array.length < 1) {
+        console.error("Please model a process first.");
+        return false;
+    }
+
+    return array;
+}
+
+function download(filename, text) {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+
+    element.style.display = 'none';
+    document.body.appendChild(element);
+
+    element.click();
+
+    document.body.removeChild(element);
+}
+
+function downloadRScript() {
+    download(SCRIPT_NAME, script);
+}
+
+function copyScript() {
+    var copyText = document.getElementById("textField");
+    copyText.select();
+    document.execCommand("Copy");
+}
+
+function displayButtons() {
+    var dwl = document.getElementById("downloadScript-button");
+    var cpy = document.getElementById("copyScript-button");
+    dwl.style.display = "inline";
+    cpy.style.display = "inline";
+}
+
+function displayRScript() {
+    document.getElementById("textField").innerHTML = script;
+}
+
+
+
+
+////////////APPLICATION//////////////
+
+// handle Help popup
+var openHelpButton = document.getElementById('openHelp-button');
+var helpPopup = document.getElementById('helpPopup');
+
+openHelpButton.onclick = function () {
+    helpPopup.style.display = "block";
+}
+
+// handle Input Popup
+var inputPopup = document.getElementById('inputPopup');
+
+// close popups
+window.onclick = function (event) {
+    if (event.target == helpPopup) {
+        helpPopup.style.display = "none";
+    }
+    if (event.target == inputPopup) {
+        inputPopup.style.display = "none";
     }
 }
 
-// Update the value for the Filtering Threshold Range
-var ftRange = document.getElementById('filtering_threshold');
-var ftText = document.getElementById('ftValue');
-var discretizationCheckbox = document.getElementById('enable_discretization');
+// dropdown for selecting process
+var processSelector = document.getElementById("process-selector");
 
-ftRange.onchange = function () {
-    ftText.value = ftRange.value;
-}
+// Download Script Button
+var downloadScriptButton = document.querySelector('#downloadScript-button');
+downloadScriptButton.addEventListener('click', function () {
+    downloadRScript();
+});
 
-ftText.onchange = function () {
-    isValueInRange(ftText, ftRange, 0, 100);
-}
+// Copy Script Button
+var copyScriptButton = document.querySelector('#copyScript-button');
+copyScriptButton.addEventListener('click', function () {
+    copyScript();
+});
 
-// Update the value for the Feature Selection Threshold Range
-var fstRange = document.getElementById('fs_threshold');
-var fstText = document.getElementById('fstValue');
+// Clear Process Button
+var clearProcessButton = document.querySelector('#clearProcess-button');
+clearProcessButton.addEventListener('click', function () {
+    clearProcess();
+});
 
-fstRange.onchange = function () {
-    fstText.value = fstRange.value;
-}
+// Accept Process Button
+var acceptProcessButton = document.querySelector('#acceptProcess-button');
+acceptProcessButton.addEventListener('click', function () {
+    acceptProcess();
+});
 
-fstText.onchange = function () {
-    isValueInRange(fstText, fstRange, 0, 100);
-}
+// Accept Attributes Button
+var acceptAttributesButton = document.querySelector('#acceptAttributes-button');
+acceptAttributesButton.addEventListener('click', function () {    
+    inputPopup.style.display = "block";
+    setDefaultValues();   
+});
+
+// Process Selector dropdown & button
+var selectProcessButton = document.querySelector('#selectProcess-button');
+selectProcessButton.addEventListener('click', function () {
+    var chosenProcessID = processSelector.options[processSelector.selectedIndex].value;
+    if (chosenProcessID > 0) {
+        var chosenProcessFileName = dict[chosenProcessID];
+        getModel(chosenProcessFileName);
+    }
+});
 
 // Save Input Settings Button
 var saveInputButton = document.getElementById('setInput-button');
 saveInputButton.onclick = function () {
     saveArguments();
     inputPopup.style.display = "none";
+    generateCode();
 }
 
 // Reset Input Settings Button
@@ -107,6 +543,11 @@ var resetInputButton = document.getElementById('resetInput-button');
 resetInputButton.onclick = function () {
     setDefaultValues();
 }
+
+
+
+
+
 
 
 ///////////////WRITE SCRIPT////////////////////
@@ -148,7 +589,7 @@ function prepareNormalQueryParams(dataType, sampleTypes, workflow, barcodeString
     var dataTypeString = "";
     var sampleTypesString = "";
     var workflowString = "";
-    var outputName = "";  
+    var outputName = "";
 
     //map sample type abbreviation into concrete definitions to use for the query
     if (sampleTypes.length > 1) {
@@ -157,7 +598,7 @@ function prepareNormalQueryParams(dataType, sampleTypes, workflow, barcodeString
             sampleTypesString.concat("\"", sampleTypes[i], "\",");
         }
         //remove last comma       
-        sampleTypesString = sampleTypesString.substring(0, sampleTypesString.length - 1);       
+        sampleTypesString = sampleTypesString.substring(0, sampleTypesString.length - 1);
         sampleTypesString += ")";
     }
 
@@ -173,8 +614,8 @@ function prepareNormalQueryParams(dataType, sampleTypes, workflow, barcodeString
     if (workflow) {
         workflowString = "workflow = \"" + workflow + "\"";
         outputName += "_" + workflow;
-    }       
-        
+    }
+
     otherParams = filterEmptyStringsFromArray([dataTypeString, sampleTypesString, workflowString, barcodeString]).join(", ");
     if (otherParams != "") {
         otherParams = ", " + otherParams;
@@ -195,10 +636,10 @@ function prepareOverallParams(projects, barcodes, sampleTypes) {
     var projectString = "";
     var barcodeString = "";
     projectString += projects.join("\", \"");
-   
+
     if (barcodes) {
         barcodeString = "barcode = c(\"";
-        barcodeString += barcodes.join("\", \"");       
+        barcodeString += barcodes.join("\", \"");
         barcodeString += "\")";
     }
     return [projectString, barcodeString];
@@ -251,7 +692,7 @@ function writeProcessingStart(querytype, projects, dataCategory, otherParams) {
 function writePreamble() {
     script += SCRIPT_PREAMBLE;
     script += "\n";
-    script += "\n";    
+    script += "\n";
 }
 
 function writeProcessingEnding() {
@@ -344,7 +785,7 @@ function writeMetadataFiles(datasetId, outputFilePath) {
     SCRIPT_WRITEFINALMETADATAFILE = SCRIPT_WRITEFINALMETADATAFILE.replace(/{var0}/g, datasetId);
     SCRIPT_WRITEFINALMETADATAFILE = SCRIPT_WRITEFINALMETADATAFILE.replace(/{var1}/g, outputFilePath);
     script += SCRIPT_WRITEFINALMETADATAFILE;
-    script += "\n";    
+    script += "\n";
 }
 
 var SCRIPT_WRITEOVERALLFILE = `matrix{var0} <- t(assay(transdds{var0})) #creates the gene expression matrix with genes as rows
@@ -366,7 +807,7 @@ function writeDataFiles(datasetId, outputFilePath) {
     script += "\n";
 }
 
-function getTimeStamp(){
+function getTimeStamp() {
     var d = new Date();
     var time = d.getFullYear();
     time += "-"
@@ -385,23 +826,6 @@ function getTimeStamp(){
 var WORKING_DIR = "./GDCdata/";
 var DATASET_DIR = WORKING_DIR + getTimeStamp() + "/";
 var SCRIPT_NAME = "GDCquery.R";
-
-function download(filename, text) {
-    var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    element.setAttribute('download', filename);
-
-    element.style.display = 'none';
-    document.body.appendChild(element);
-
-    element.click();
-
-    document.body.removeChild(element);
-}
-
-function downloadRScript() {
-    download(SCRIPT_NAME, script);
-}
 
 function writeNormalProcessing(index, projectString, dataCategory, otherParams, outputFile) {
     var datasetId = index.toString();
@@ -444,7 +868,6 @@ function writeClinicalFile(queryname, outputFilePath) {
     script += "\n \n";
 }
 
-
 function writeClinicalProcessing(index, projectString, dataCategory, otherParams, outputFile) {
     var queryname = "query" + index.toString();
     var outputFilePath = DATASET_DIR + outputFile
@@ -467,7 +890,7 @@ function iterateDatasets(projectString, barcodeString, outputFile) {
 
     var parameterCombinations = [];
     parameterCombinations = getParameterCombinations([dataCategories, dataTypes, workflows]);
-    
+
     var clinicaldone = false;
     var biospecimendone = false;
 
@@ -483,7 +906,7 @@ function iterateDatasets(projectString, barcodeString, outputFile) {
         //if we have clinical or biospecimen data, we need to apply a different script
         if (!clinicalData && !biospecimenData) {
             var paramsFilename = prepareNormalQueryParams(dataType, sampleTypes, workflow, barcodeString);
-            otherParams = paramsFilename[0];            
+            otherParams = paramsFilename[0];
             writeNormalProcessing(i, projectString, dataCategory, otherParams, (outputFile + paramsFilename[1]).replace(" ", ""));
         }
         else {
@@ -511,144 +934,5 @@ function createRScript(processTasks) {
     writePreamble(script);
     var overallParams = prepareOverallParams(projects, barcodes, sampleTypes);
     iterateDatasets(overallParams[0], overallParams[1], outputFile);
-    console.log("final script: " + script);
 }
 
-
-////////////DICTIONARY//////////////
-
-// Dictionary for predefined processes
-var dict = {
-    1: '/process1.bpmn',
-    2: '/process2.bpmn',
-    3: '/process3.bpmn'
-};
-
-
-
-////////////PARSER//////////////
-
-function parseProcess(xml) {
-    var parser = new DOMParser();
-    var xmlDoc = parser.parseFromString(xml, "text/xml");
-    var array = [];
-
-    var process = xmlDoc.getElementsByTagName("bpmn:sequenceFlow");
-
-    if (process.length == 0) {
-        alert("Please model a process first.");
-        return false;
-    }
-
-    var currentSource = "StartEvent";
-    var numOfTasks = process.length - 1;
-    var i = 0;
-
-    while (array.length <= numOfTasks) {
-
-        // find sequence with currentSource as source    
-        if (process[i].getAttribute("sourceRef") == currentSource) {
-            currentTarget = process[i].getAttribute("targetRef");
-
-            // Exception handling with EndEvent
-            if (currentTarget == "EndEvent") {
-                // no tasks
-                if (currentSource == "StartEvent") {
-                    alert("You must include at least one task or subprocess.");
-                    return false;
-                }
-                    // parsing finished
-                else {                    
-                    alert("Parsing was successful. See console (F12)");
-                    return array;
-                }
-            }
-                // all went well, iterate on
-            else {
-                array.push(currentTarget);
-                currentSource = currentTarget;
-                var i = 0;
-            }
-        }
-        else {
-            if (i == numOfTasks) {
-                alert("Something went wrong");
-                return false;
-            }
-            else {
-                i++;
-            }
-        }
-    }
-
-    alert("Something went wrong. Please make sure your process starts with a StartEvent, ends with an EndEvent and includes at least one task or subprocess inbetween.");
-    return false;
-}
-
-
-////////////APPLICATION//////////////
-
-// handle Help popup
-var openHelpButton = document.getElementById('openHelp-button');
-var helpPopup = document.getElementById('helpPopup');
-
-openHelpButton.onclick = function () {
-    helpPopup.style.display = "block";
-}
-
-// handle Input Popup
-var openInputButton = document.getElementById('openInput-button');
-var inputPopup = document.getElementById('inputPopup');
-
-openInputButton.onclick = function () {
-    inputPopup.style.display = "block";
-    setDefaultValues();
-}
-
-// close popups
-window.onclick = function (event) {
-    if (event.target == helpPopup) {
-        helpPopup.style.display = "none";
-    }
-    if (event.target == inputPopup) {
-        inputPopup.style.display = "none";
-    }
-}
-
-// dropdown for selecting process
-var processSelector = document.getElementById("process-selector");
-
-// Generate Script Button
-var generateButton = document.querySelector('#generate-button');
-var processTasks = [];
-generateButton.addEventListener('click', function () {
-    bpmnModeler.saveXML({ format: true }, function (err, xml) {
-
-        if (err) {
-            console.error('diagram save failed', err);
-        } else {
-            processTasks = parseProcess(xml);
-            createRScript(processTasks);
-            downloadRScript();
-        }
-    });
-});
-
-// Reset Model Button
-var resetModelButton = document.querySelector('#resetModel-button');
-resetModelButton.addEventListener('click', function () {
-    $(processSelector).each(function () {
-        this.selectedIndex = 0
-    });
-    getModel();
-});
-
-// Process Selector dropdown & button
-var selectProcessButton = document.querySelector('#selectProcess-button');
-selectProcessButton.addEventListener('click', function () {
-    var chosenProcessID = processSelector.options[processSelector.selectedIndex].value;
-    if (chosenProcessID > 0) {
-        var chosenProcessFileName = dict[chosenProcessID];
-        getModel(chosenProcessFileName);
-    }
-});

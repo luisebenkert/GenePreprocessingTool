@@ -8,13 +8,16 @@
   <title>Gene Pre-Processing Modelling Tool</title>
 
   <link rel="stylesheet" href="http://localhost:8012/camunda-web-tool/style.css">
-  <link rel="stylesheet" href="http://localhost:8012/camunda-web-tool/bower_components/bpmn-js/dist/assets/diagram-js.css">
-  <link rel="stylesheet" href="http://localhost:8012/camunda-web-tool/bower_components/bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css">
 </head>
 <body>
-    <div id="helpPopup" class="popup">
-        <!-- Modal content -->
-        <div class="popup-content">                   
+
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+    <div id="header" style="height: auto; ">
+        <div id="helpPopup" class="popup">
+            <!-- Modal content -->
+            <div class="popup-content">
                 <h3> Gene Pre-Processing Modelling Tool </h3>
                 <p>
                     Please arrange the pre-processing tasks in the necessary order or choose a predefined process. <br /><br />
@@ -22,179 +25,183 @@
                     Once done, press "Parse" to start the Process. <br /><br />
                     "Reload" will restore the initial state. <br /><br />
                 </p>
+            </div>
         </div>
-    </div>   
-    
-    <div id="inputPopup" class="popup">
-        <!-- Modal content -->
-        <div class="popup-content">          
-            <h3>Input Settings </h3>
-            <p> Please specify the following values or keep the default values. Hold STR to select multiple values.</p>               
-            <table class="table">               
-                <tr>
-                    <td>Project:</td>
-                    <td>
-                        <select multiple id="project" class="select">
-                            <option value="TCGA-BRCA">TCGA-BRCA</option>
-                            <option value="TCGA-GBM">TCGA-GBM</option>
-                            <option value="TCGA-OV">TCGA-OV</option>
-                            <option value="TCGA-LUAD">TCGA-LUAD</option>
-                            <option value="TCGA-UCEC">TCGA-UCEC</option>
-                            <option value="TCGA-KIRC">TCGA-KIRC</option>
-                            <option value="TCGA-HNSC">TCGA-HNSC</option>
-                            <option value="TCGA-LGG">TCGA-LGG</option>
-                            <option value="TCGA-THCA">TCGA-THCA</option>
-                            <option value="TCGA-LUSC">TCGA-LUSC</option>
-                            <option value="TCGA-PRAD">TCGA-PRAD</option>
-                            <option value="TCGA-SKCM">TCGA-SKCM</option>
-                            <option value="TCGA-COAD">TCGA-COAD</option>
-                            <option value="TCGA-STAD">TCGA-STAD</option>
-                            <option value="TCGA-BLCA">TCGA-BLCA</option>
-                            <option value="TCGA-LIHC">TCGA-LIHC</option>
-                            <option value="TCGA-CESC">TCGA-CESC</option>
-                            <option value="TCGA-KIRP">TCGA-KIRP</option>
-                            <option value="TCGA-SARC">TCGA-SARC</option>
-                            <option value="TCGA-LAML">TCGA-LAML</option>
-                            <option value="TCGA-ESCA">TCGA-ESCA</option>
-                            <option value="TCGA-PAAD">TCGA-PAAD</option>
-                            <option value="TCGA-PCPG">TCGA-PCPG</option>
-                            <option value="TCGA-READ">TCGA-READ</option>
-                            <option value="TCGA-TGCT">TCGA-TGCT</option>
-                            <option value="TCGA-THYM">TCGA-THYM</option>
-                            <option value="TCGA-KICH">TCGA-KICH</option>
-                            <option value="TCGA-ACC">TCGA-ACC</option>
-                            <option value="TCGA-MESO">TCGA-MESO</option>
-                            <option value="TCGA-UVM">TCGA-UVM</option>
-                            <option value="TCGA-DLBC">TCGA-DLBC</option>
-                            <option value="TCGA-UCS">TCGA-UCS</option>
-                            <option value="TCGA-CHOL">TCGA-CHOL</option>                            
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Data Category:</td>
-                    <td>
-                        <select multiple id="data_category" class="select">
-                            <option value="Transcriptome Profiling">Transcriptome Profiling</option>   
-                            <option value="Clinical">Clinical</option>                           
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Data Type:</td>
-                    <td>
-                        <select multiple id="data_type" class="select">
-                            <option value="Gene Expression Quantification">Gene Expression Quantification</option>
-                            <option value="Clinical">Clinical</option> 
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Sample Types:</td>
-                    <td>
-                        <select multiple id="sample_types" class="select">
-                            <option value="TP">TP</option>
-                            <option value="TR">TR</option>
-                            <option value="TB">TB</option>
-                            <option value="TRBM">TRBM</option>
-                            <option value="TAP">TAP</option>
-                            <option value="TM">TM</option>
-                            <option value="TAM">TAM</option>
-                            <option value="THOC">THOC</option>
-                            <option value="TBM">TBM</option>
-                            <option value="NB">NB</option>
-                            <option value="NT">NT</option>
-                            <option value="NBC">NBC</option>
-                            <option value="NEBV">NEBV</option>
-                            <option value="NBM">NBM</option>
-                            <option value="CELLC">CELLC</option>
-                            <option value="TRB">TRB</option>
-                            <option value="CELL">CELL</option>
-                            <option value="XP">XP</option>
-                            <option value="XCL">XCL</option>                            
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Workflow:</td>
-                    <td>
-                        <select multiple id="workflow" class="select">
-                            <option value="HTSeq - Counts">HTSeq - Counts</option>
-                        </select>
-                    </td>
-                </tr>                
-                <tr>
-                    <td>Preprocessing:</td>
-                    <td>
-                        <select id="preprocessing" class="select">
-                            <option value="DESeq2">DESeq2</option>
-                            <option value="edgeR">edgeR</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Normalization:</td>
-                    <td>
-                        <select id="normalization" class="select">
-                            <option value="vsd">VSD</option>
-                            <option value="rlog">RLog</option>
-                        </select>
-                    </td>
-                </tr>                
-                <tr>
-                    <td>Enable Discretization:</td>
-                    <td>
-                        <input id="enable_discretization" type="checkbox">
-                    </td>
-                </tr>                
-                <tr>
-                    <td>Filtering Threshold:</td>
-                    <td>
-                        <input type="range" id="filtering_threshold" min="0" max="100" step="1" />
-                        <input type="text" id="ftValue" maxlength="3" style="width: 3ch"> %
-                    </td>
-                </tr>                
-                <tr>
-                    <td>Feature Selection Threshold:</td>
-                    <td>
-                        <input type="range" id="fs_threshold" min="0" max="100" step="1" />
-                        <input type="text" id="fstValue" maxlength="3" style="width: 3ch"> %
-                    </td>
-                </tr>                              
-            </table>
-            <button type="button" id="setInput-button" class="button">SAVE</button>
-            <button type="button" id="resetInput-button" class="button">RESET</button>
-        </div>
-    </div>  
-    
-    <h3>
-        Gene Pre-Processing Modelling Tool
-        <button id="openHelp-button" type="button" class="image-button">
-            <img class="icon" src="http://localhost:8012/camunda-web-tool/help_icon.png"/>
-        </button>
-    </h3>
-            
-    <div id="processSelector">
-        Predefined Processes: <select id="process-selector">
-            <option disabled selected value> -- select a process -- </option>
-            <option value="1">Process 1</option>
-            <option value="2">Process 2</option>
-            <option value="3">Process 3</option>
-        </select>
-        <button type="button" id="selectProcess-button">SELECT</button>
-    </div>
-  
-    <div id="buttons" style="width: auto; margin-top: 1em; margin-bottom: 2em">    
-        <button type="button" id="openInput-button" class="button">INPUT SETTINGS</button>        
-        <button type="button" id="resetModel-button" class="button">RESET MODEL</button>        
-        <button type="button" id="generate-button" class="button">GENERATE SCRIPT</button>       
-    </div>        
-   
 
-    <div id="canvas"></div>
+        <div id="inputPopup" class="popup">
+            <!-- Modal content -->
+            <div class="popup-content">
+                <h3>Input Settings </h3>
+                <p> Please specify the following values or keep the default values. Hold STR to select multiple values.</p>
+                <table class="table">
+                    <tr>
+                        <td>Project:</td>
+                        <td>
+                            <select multiple id="project" class="select">
+                                <option value="TCGA-BRCA">TCGA-BRCA</option>
+                                <option value="TCGA-GBM">TCGA-GBM</option>
+                                <option value="TCGA-OV">TCGA-OV</option>
+                                <option value="TCGA-LUAD">TCGA-LUAD</option>
+                                <option value="TCGA-UCEC">TCGA-UCEC</option>
+                                <option value="TCGA-KIRC">TCGA-KIRC</option>
+                                <option value="TCGA-HNSC">TCGA-HNSC</option>
+                                <option value="TCGA-LGG">TCGA-LGG</option>
+                                <option value="TCGA-THCA">TCGA-THCA</option>
+                                <option value="TCGA-LUSC">TCGA-LUSC</option>
+                                <option value="TCGA-PRAD">TCGA-PRAD</option>
+                                <option value="TCGA-SKCM">TCGA-SKCM</option>
+                                <option value="TCGA-COAD">TCGA-COAD</option>
+                                <option value="TCGA-STAD">TCGA-STAD</option>
+                                <option value="TCGA-BLCA">TCGA-BLCA</option>
+                                <option value="TCGA-LIHC">TCGA-LIHC</option>
+                                <option value="TCGA-CESC">TCGA-CESC</option>
+                                <option value="TCGA-KIRP">TCGA-KIRP</option>
+                                <option value="TCGA-SARC">TCGA-SARC</option>
+                                <option value="TCGA-LAML">TCGA-LAML</option>
+                                <option value="TCGA-ESCA">TCGA-ESCA</option>
+                                <option value="TCGA-PAAD">TCGA-PAAD</option>
+                                <option value="TCGA-PCPG">TCGA-PCPG</option>
+                                <option value="TCGA-READ">TCGA-READ</option>
+                                <option value="TCGA-TGCT">TCGA-TGCT</option>
+                                <option value="TCGA-THYM">TCGA-THYM</option>
+                                <option value="TCGA-KICH">TCGA-KICH</option>
+                                <option value="TCGA-ACC">TCGA-ACC</option>
+                                <option value="TCGA-MESO">TCGA-MESO</option>
+                                <option value="TCGA-UVM">TCGA-UVM</option>
+                                <option value="TCGA-DLBC">TCGA-DLBC</option>
+                                <option value="TCGA-UCS">TCGA-UCS</option>
+                                <option value="TCGA-CHOL">TCGA-CHOL</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Data Category:</td>
+                        <td>
+                            <select multiple id="data_category" class="select">
+                                <option value="Transcriptome Profiling">Transcriptome Profiling</option>
+                                <option value="Clinical">Clinical</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Data Type:</td>
+                        <td>
+                            <select multiple id="data_type" class="select">
+                                <option value="Gene Expression Quantification">Gene Expression Quantification</option>
+                                <option value="Clinical">Clinical</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Sample Types:</td>
+                        <td>
+                            <select multiple id="sample_types" class="select">
+                                <option value="TP">TP</option>
+                                <option value="TR">TR</option>
+                                <option value="TB">TB</option>
+                                <option value="TRBM">TRBM</option>
+                                <option value="TAP">TAP</option>
+                                <option value="TM">TM</option>
+                                <option value="TAM">TAM</option>
+                                <option value="THOC">THOC</option>
+                                <option value="TBM">TBM</option>
+                                <option value="NB">NB</option>
+                                <option value="NT">NT</option>
+                                <option value="NBC">NBC</option>
+                                <option value="NEBV">NEBV</option>
+                                <option value="NBM">NBM</option>
+                                <option value="CELLC">CELLC</option>
+                                <option value="TRB">TRB</option>
+                                <option value="CELL">CELL</option>
+                                <option value="XP">XP</option>
+                                <option value="XCL">XCL</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Workflow:</td>
+                        <td>
+                            <select multiple id="workflow" class="select">
+                                <option value="HTSeq - Counts">HTSeq - Counts</option>
+                            </select>
+                        </td>
+                    </tr>                                                      
+                </table>
+                <button type="button" id="setInput-button" class="button">SAVE</button>
+                <button type="button" id="resetInput-button" class="button">RESET</button>
+            </div>
+        </div>
+
+        <h3>
+            Gene Pre-Processing Modelling Tool
+            <button id="openHelp-button" type="button" class="image-button">
+                <img class="icon" src="http://localhost:8012/camunda-web-tool/help_icon.png" />
+            </button>
+        </h3>
+
+        <div id="processSelector">
+            Predefined Processes: <select id="process-selector">
+                <option disabled selected value> -- select a process -- </option>
+                <option value="1">Process 1</option>
+                <option value="2">Process 2</option>
+                <option value="3">Process 3</option>
+            </select>
+            <button type="button" id="selectProcess-button">SELECT</button>
+        </div>
+
+    </div>
+    
+    <div class="divTable">
+        <div class="divTableBody">
+            <div class="divTableRow">
+                <div class="divTableCell" id="library" ondrop="onLibraryDrop(event)" ondragover="allowDrop(event)">
+                    <div id="drag1" class="draggable" draggable="true" ondragstart="drag(event)"><p>Filter</p></div>
+                    <div id="drag2" class="draggable" draggable="true" ondragstart="drag(event)"><p>Normalize</p></div>
+                    <div id="drag3" class="draggable" draggable="true" ondragstart="drag(event)"><p>Log Transform</p></div>
+                    <div id="drag4" class="draggable" draggable="true" ondragstart="drag(event)"><p>Discretize</p></div>      
+                </div>
+                <div class="divTableCell" id="workspace">
+                    <div id="drop1" class="droppable" ondrop="onWorkspaceDrop(event)" ondragover="allowDrop(event)"></div>
+                    <div id="drop2" class="droppable" ondrop="onWorkspaceDrop(event)" ondragover="allowDrop(event)"></div>
+                    <div id="drop3" class="droppable" ondrop="onWorkspaceDrop(event)" ondragover="allowDrop(event)"></div>
+                    <div id="drop4" class="droppable" ondrop="onWorkspaceDrop(event)" ondragover="allowDrop(event)"></div>                    
+                </div>
+                <div class="divTableCell" id="attributeSetter">   
+                                                                         
+                </div>
+                <div class="divTableCell" id="codeBox">
+                    <textarea readonly id="textField"></textarea>
+                </div>                
+            </div>
+            <div class="divTableRow">
+                <div class="divTableCell" id="libraryButtonBar"></div>
+                <div class="divTableCell" id="workspaceButtonBar">
+                    <button type="button" id="clearProcess-button" class="image-button">
+                        <img class="icon" src="http://localhost:8012/camunda-web-tool/clear_icon.png" />
+                    </button>
+                    <button type="button" id="acceptProcess-button" class="image-button">
+                        <img class="icon" src="http://localhost:8012/camunda-web-tool/accept_icon.png" />
+                    </button>
+                </div>     
+                <div class="divTableCell" id="attributeButtonBar">
+                    <button type="button" id="acceptAttributes-button" class="image-button">
+                        <img class="icon" src="http://localhost:8012/camunda-web-tool/accept_icon.png" />
+                    </button>
+                </div>
+                <div class="divTableCell" id="codeBoxButtonBar">
+                    <button type="button" id="downloadScript-button" class="script-button">
+                        <img class="icon" src="http://localhost:8012/camunda-web-tool/download_icon.png" />
+                    </button>
+                    <button type="button" id="copyScript-button" class="script-button">
+                        <img class="icon" src="http://localhost:8012/camunda-web-tool/copy_icon.png" />
+                    </button>
+                </div>                       
+            </div>
+        </div>
+    </div>
+        
     <!-- scripts -->
-    <script src="http://localhost:8012/camunda-web-tool/jquery-3.0.0.js"></script>
-    <script src="http://localhost:8012/camunda-web-tool/bower_components/bpmn-js/dist/bpmn-modeler.js"></script>    
+    <script src="http://localhost:8012/camunda-web-tool/jquery-3.0.0.js"></script>   
     <script src="http://localhost:8012/camunda-web-tool/application.js"></script>
 </body>
 </html>
